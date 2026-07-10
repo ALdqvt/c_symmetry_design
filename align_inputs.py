@@ -16,20 +16,20 @@ def get_com(atoms):
 def align_structure(structure, n_term_atom, c_term_atom):
     atoms = list(structure.get_atoms())
     a_chain = structure[0]["A"]
-    chain_atoms = list(a_chain.get_atoms())
-    com = get_com(chain_atoms)
-
     b_chain = structure[0]["B"]
-    ligand_atoms = list(b_chain.get_atoms())
-    pocket_coord = get_com(ligand_atoms)
+    a_chain_atoms = list(a_chain.get_atoms())
+    com = get_com(a_chain_atoms)
+
 
     # Step 1: translate COM to origin
     for atom in atoms:
         atom.set_coord(atom.get_coord() - com)
-    pocket_coord = pocket_coord - com
+
+    ligand_atoms = list(b_chain.get_atoms())
+    lig_coord = get_com(ligand_atoms)
 
     # Step 2: rotate u -> x-axis
-    u = pocket_coord / np.linalg.norm(pocket_coord)
+    u = lig_coord / np.linalg.norm(lig_coord)
     x_axis = np.array([1.0, 0.0, 0.0])
     rot1 = Rotation.align_vectors([x_axis], [u])[0]
 
