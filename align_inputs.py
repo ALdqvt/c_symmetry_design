@@ -3,9 +3,6 @@ from scipy.spatial.transform import Rotation
 from pathlib import Path
 from Bio.PDB import PDBParser, PDBIO
 
-INPUT_DIR = Path("input_structures")
-OUTPUT_DIR = Path("input_structures/aligned")
-OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 
@@ -60,33 +57,40 @@ def align_structure(structure, n_term_atom, c_term_atom):
 
     return structure
 
+def main():
+    INPUT_DIR = Path("input_structures")
+    OUTPUT_DIR = Path("input_structures/aligned")
+    OUTPUT_DIR.mkdir(exist_ok=True)
 
-parser = PDBParser(QUIET=True)
-io = PDBIO()
 
-failed = []
-pdb_files = sorted(INPUT_DIR.glob("*.pdb"))
+    parser = PDBParser(QUIET=True)
+    io = PDBIO()
 
-for pdb_path in pdb_files:
-    try:
-        structure = parser.get_structure(pdb_path.stem, pdb_path)
-        a_chain = structure[0]["A"]
+    failed = []
+    pdb_files = sorted(INPUT_DIR.glob("*.pdb"))
 
-        residue_ids = sorted(res.id[1] for res in a_chain if res.id[0] == " ")
-        n_term_atom = a_chain[residue_ids[0]]["CA"]
-        c_term_atom = a_chain[residue_ids[-1]]["CA"]
+    for pdb_path in pdb_files:
+        try:
+            structure = parser.get_structure(pdb_path.stem, pdb_path)
+            a_chain = structure[0]["A"]
 
-        aligned = align_structure(structure, n_term_atom, c_term_atom)
+            residue_ids = sorted(res.id[1] for res in a_chain if res.id[0] == " ")
+            n_term_atom = a_chain[residue_ids[0]]["CA"]
+            c_term_atom = a_chain[residue_ids[-1]]["CA"]
 
-        out_path = OUTPUT_DIR / f"{pdb_path.stem}_aligned.pdb"
-        io.set_structure(aligned)
-        io.save(str(out_path))
+            aligned = align_structure(structure, n_term_atom, c_term_atom)
 
-    except Exception as e:
-        print(f"FAILED: {pdb_path.name} — {e}")
-        failed.append(pdb_path.name)
+            out_path = OUTPUT_DIR / f"{pdb_path.stem}_aligned.pdb"
+            io.set_structure(aligned)
+            io.save(str(out_path))
 
-print(f"\nDone. {len(failed)} failures out of {len(pdb_files)}")
-if failed:
-    print("Failed files:", failed)
+        except Exception as e:
+            print(f"FAILED: {pdb_path.name} — {e}")
+            failed.append(pdb_path.name)
 
+    print(f"\nDone. {len(failed)} failures out of {len(pdb_files)}")
+    if failed:
+        print("Failed files:", failed)
+
+if __name__ == "__main__":
+    main()
