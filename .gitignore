@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# My additions
+.idea
+./.gitignore
+/input_structures/

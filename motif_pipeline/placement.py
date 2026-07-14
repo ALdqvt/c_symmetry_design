@@ -51,8 +51,8 @@ from motif_config import MotifConfig
 parser = PDBParser(QUIET=True)
 io = PDBIO()
 
-ALIGNED_DIR = Path("input_structures/aligned")
-OUTPUT_DIR = Path("input_structures/placed_test")
+ALIGNED_DIR = Path("../input_structures/aligned")
+OUTPUT_DIR = Path("../input_structures/placed_test")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 aligned_files = sorted(ALIGNED_DIR.glob("*_aligned.pdb"))

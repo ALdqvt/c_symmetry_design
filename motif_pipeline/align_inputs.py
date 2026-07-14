@@ -4,11 +4,10 @@ from pathlib import Path
 from Bio.PDB import PDBParser, PDBIO
 
 
-
-
 def get_com(atoms):
     coords = np.array([a.get_coord() for a in atoms])
     return coords.mean(axis=0)
+
 
 def align_structure(structure, n_term_atom, c_term_atom):
     atoms = list(structure.get_atoms())
@@ -16,7 +15,6 @@ def align_structure(structure, n_term_atom, c_term_atom):
     b_chain = structure[0]["B"]
     a_chain_atoms = list(a_chain.get_atoms())
     com = get_com(a_chain_atoms)
-
 
     # Step 1: translate COM to origin
     for atom in atoms:
@@ -57,11 +55,11 @@ def align_structure(structure, n_term_atom, c_term_atom):
 
     return structure
 
-def main():
-    INPUT_DIR = Path("input_structures")
-    OUTPUT_DIR = Path("input_structures/aligned")
-    OUTPUT_DIR.mkdir(exist_ok=True)
 
+def main():
+    INPUT_DIR = Path("../input_structures")
+    OUTPUT_DIR = Path("../input_structures/aligned")
+    OUTPUT_DIR.mkdir(exist_ok=True)
 
     parser = PDBParser(QUIET=True)
     io = PDBIO()
@@ -91,6 +89,7 @@ def main():
     print(f"\nDone. {len(failed)} failures out of {len(pdb_files)}")
     if failed:
         print("Failed files:", failed)
+
 
 if __name__ == "__main__":
     main()
