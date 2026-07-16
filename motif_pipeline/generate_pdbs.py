@@ -84,7 +84,7 @@ for aligned_path in aligned_files:
     manifest_file = open(manifest_path, "a", newline="")
     writer = csv.writer(manifest_file)
     if not manifest_exists:
-        writer.writerow(["filepath", "r", "theta", "phi", "zeta", "timestamp"])
+        writer.writerow(HEADER)
 
     configs = list(generate_configs(r_min=r_min, r_max=r_max, r_step=R_STEP, grid_step_deg=GRID_STEP_DEG))
     print(f"About to generate {len(configs)} structures.")
@@ -92,6 +92,7 @@ for aligned_path in aligned_files:
     failed = []
 
     for config in configs:
+        config_id = make_config_id(aligned_path.stem, config)
         try:
             placed = place_motif(structure, config)
             symmetrised = symmetrise(placed, n_copies=N_COPIES, include_ligand=INCLUDE_LIGAND)
@@ -109,11 +110,23 @@ for aligned_path in aligned_files:
             io.set_structure(symmetrised)
             io.save(str(out_path))
 
-            writer.writerow(
-                [str(out_path), config.r, config.theta, config.phi, config.zeta, datetime.now().isoformat()])
+            writer.writerow([
+                config_id, aligned_path.stem, str(out_path),
+                config.r, config.theta, config.phi, config.zeta,
+                N_COPIES, INCLUDE_LIGAND,
+                r_min, r_max, motif_radius,
+                "success", "", datetime.now().isoformat(),
+            ])
             print(f"Wrote {out_path}")
 
         except Exception as e:
+            writer.writerow([
+                config_id, aligned_path.stem, "",
+                config.r, config.theta, config.phi, config.zeta,
+                N_COPIES, INCLUDE_LIGAND,
+                r_min, r_max, motif_radius,
+                "failed", str(e), datetime.now().isoformat(),
+            ])
             print(f"FAILED: config={config} - {e}")
             failed.append(config)
 
