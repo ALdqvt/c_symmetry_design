@@ -7,7 +7,7 @@ from scipy.spatial.transform import Rotation
 from Bio.PDB import Structure, Model
 
 
-def symmetrise(placed_structure, n_copies=6, include_ligand=False, lig_chain_id="B"):
+def symmetrise(placed_structure, n_copies=6, include_ligand=True, lig_chain_id="B"):
     z_axis = np.array([0.0, 0.0, 1.0])
     chain_ids = string.ascii_uppercase[:n_copies]  # A, B, C, D, E, F
 
@@ -27,6 +27,7 @@ def symmetrise(placed_structure, n_copies=6, include_ligand=False, lig_chain_id=
         rot = Rotation.from_rotvec(z_axis * np.deg2rad(angle))
 
         new_chain = copy.deepcopy(source_chain)
+        new_chain.detach_parent()
         new_chain.id = chain_id
 
         for atom in new_chain.get_atoms():
@@ -36,6 +37,7 @@ def symmetrise(placed_structure, n_copies=6, include_ligand=False, lig_chain_id=
 
         if include_ligand:
             new_ligand = copy.deepcopy(source_ligand)
+            new_ligand.detach_parent()
             new_ligand.id = lig_chain_ids[i]
             for atom in new_ligand.get_atoms():
                 atom.set_coord(rot.apply(atom.get_coord()))
