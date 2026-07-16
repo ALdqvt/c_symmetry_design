@@ -29,9 +29,9 @@ def motif_extent_worst_case(chain_atoms, n_samples=72):
 
 def generate_configs(r_min, r_max, r_step, grid_step_deg):
     r_values = np.arange(r_min, r_max + r_step, r_step)
-    phis = np.arange(30, 150 + grid_step_deg, grid_step_deg)
+    phis = np.arange(45, 135 + grid_step_deg, grid_step_deg)
 
-    theta_max = 60
+    theta_max = 45
     theta_min = -theta_max
     for r in r_values:
         for phi in phis:
