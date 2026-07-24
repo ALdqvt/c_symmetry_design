@@ -45,24 +45,25 @@ def place_motif(structure, config):
 
 
 ########
-from pathlib import Path
-from motif_config import MotifConfig
+if __name__ == "__main__":
+    from pathlib import Path
+    from motif_pipeline.motif_config import MotifConfig
 
-parser = PDBParser(QUIET=True)
-io = PDBIO()
+    parser = PDBParser(QUIET=True)
+    io = PDBIO()
 
-ALIGNED_DIR = Path("../input_structures/aligned")
-OUTPUT_DIR = Path("../input_structures/placed_test")
-OUTPUT_DIR.mkdir(exist_ok=True)
+    ALIGNED_DIR = Path("../input_structures/aligned")
+    OUTPUT_DIR = Path("../input_structures/placed_test")
+    OUTPUT_DIR.mkdir(exist_ok=True)
 
-aligned_files = sorted(ALIGNED_DIR.glob("*_aligned.pdb"))
-structure = parser.get_structure(aligned_files[0].stem, aligned_files[0])
+    aligned_files = sorted(ALIGNED_DIR.glob("*_aligned.pdb"))
+    structure = parser.get_structure(aligned_files[0].stem, aligned_files[0])
 
 # sanity check: theta=0, phi=90 -> along original +x, zeta=0 -> no spin
-config = MotifConfig(r=15.0, theta=0.0, phi=90.0, zeta=180.0)
+    config = MotifConfig(r=15.0, theta=0.0, phi=90.0, zeta=180.0)
 
-placed = place_motif(structure, config)
+    placed = place_motif(structure, config)
 
-out_path = OUTPUT_DIR / f"{aligned_files[0].stem}_placed.pdb"
-io.set_structure(placed)
-io.save(str(out_path))
+    out_path = OUTPUT_DIR / f"{aligned_files[0].stem}_placed.pdb"
+    io.set_structure(placed)
+    io.save(str(out_path))
