@@ -29,9 +29,10 @@ def motif_extent_worst_case(chain_atoms, n_samples=72):
 
 def generate_configs(r_min, r_max, r_step, grid_step_deg):
     r_values = np.arange(r_min, r_max + r_step, r_step)
-    phis = np.arange(45, 135 + grid_step_deg, grid_step_deg)
+    phis = np.arange(60, (180 - 60) + grid_step_deg, grid_step_deg) # Arvid 28/07/2026: Narrow this down as downstream...
+    # ...motifs from inference are pointing too much outwards from the assembly
 
-    theta_max = 45
+    theta_max = 30
     theta_min = -theta_max
     for r in r_values:
         for phi in phis:
