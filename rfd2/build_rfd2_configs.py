@@ -28,11 +28,11 @@ N_DESIGNS = 10
 # residues can plausibly bridge. This is a rough guess -- inspect the real
 # distribution of orientation_dist in your manifest (manifest.orientation_dist.describe())
 # before trusting this cutoff for a real run.
-MAX_BRIDGE_DIST = 35.0  # Angstroms
+MAX_BRIDGE_DIST = 30.0  # Angstroms
 
 # Set to an integer to only build configs for a quick test run;
 # set to None to process everything that passes filtering.
-LIMIT = 5
+LIMIT = None 
 
 ##### ##### #####
 
