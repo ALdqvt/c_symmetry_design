@@ -131,7 +131,7 @@ def main():
 
             overrides = {
                 "inference.input_pdb": str((PROJECT_DIR / row["filepath"]).resolve()),
-                "inference.output_prefix": str(OUTPUT_DIR / config_id / "design"),
+                "inference.output_prefix": str(OUTPUT_DIR / config_id / f"{config_id}_design"),
                 "inference.num_designs": N_DESIGNS,
                 "inference.ligand": "LIG",
                 "contigmap.contigs": [contig],
