@@ -21,18 +21,20 @@ MANIFEST_PATH = PROJECT_DIR / "output_structures" / "silicatein_second_batch_01_
 
 
 FLANK_INTERFACE = 50   # residues built at the "close" termini, to bridge the interface
-INPAINT_WINDOW = 40 # TODO
+INPAINT_WINDOW = 40 # TODO: How many residues to "hide" during inference in order to get
+# close packing of extension onto input protein surface.
 N_DESIGNS = 10
 
 # Sanity filter: orientation_dist shouldn't wildly exceed what FLANK_INTERFACE
-# residues can plausibly bridge. This is a rough guess -- inspect the real
+# residues can plausibly bridge. This is a rough guess; Inspect the real
 # distribution of orientation_dist in your manifest (manifest.orientation_dist.describe())
-# before trusting this cutoff for a real run.
+# before trusting this cutoff for a real run. You might also want to make sure that this
+# doesn't limit your parameter space.
 MAX_BRIDGE_DIST = 30.0  # Angstroms
 
 # Set to an integer to only build configs for a quick test run;
-# set to None to process everything that passes filtering.
-LIMIT = None 
+# set to None to process every config parameter set that passes filtering.
+LIMIT = None
 
 ##### ##### #####
 
@@ -41,7 +43,7 @@ def get_ids_in_window(chain_start, chain_end, terminus, window):
     terminus ('N' or 'C'), clipped to the chain's actual bounds."""
     if terminus == "N":
         lo, hi = chain_start, min(chain_start + window - 1, chain_end)
-    else:  # "C"
+    else:  # terminus == "C"
         lo, hi = max(chain_end - window + 1, chain_start), chain_end
     return lo, hi
 
@@ -118,7 +120,7 @@ def main():
     GENERATED_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     base = load_base_config(BASE_CONFIG_PATH)
 
-    rows = load_and_filter_manifest(MANIFEST_PATH)
+    rows = load_and_filter_manifest(MANIFEST_PATH) # TODO: Loop over all inputs here and add to rows.
 
     n_written = 0
     n_failed = 0
