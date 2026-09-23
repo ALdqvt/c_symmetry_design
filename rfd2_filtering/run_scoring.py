@@ -8,8 +8,12 @@ Usage:
 See the NOTE at the bottom for hooking this into run_all.sh as an
 "on the go" step once you're ready for that.
 """
-import sys 
-sys.path.insert(0, "/home/panda/Resources/software/rfd2") # Needed for unpickling .trb files
+
+import sys
+
+sys.path.insert(
+    0, "/home/panda/Resources/software/rfd2"
+)  # Needed for unpickling .trb files
 
 import pickle
 import argparse
@@ -24,6 +28,8 @@ from rfd2_filtering.metrics import (
     compute_radius_of_gyration,
     compute_com_shift,
     compute_secondary_structure,
+    build_grafted_monomer,
+    compute_graft_clash,
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -45,6 +51,7 @@ HEADER = [
     "rg_B",
     "com_shift_A",
     "com_shift_B",
+    "graft_n_clashes",
     # intertwining columns get appended here once
     # compute_intertwining are implemented
 ]
@@ -66,10 +73,12 @@ def score_design(pdb_path: Path, config_id: str) -> dict:
         row.update(compute_com_shift(structure, trb_data))
         if row.get("n_clashes") == 0 and row.get("n_backbone_breaks") == 0:
             row.update(compute_secondary_structure(pdb_path, trb_data))
+            _, ext_a_atoms, ext_b_atoms = build_grafted_monomer(structure, trb_data)
+            row["graft_n_clashes"] = compute_graft_clash(ext_a_atoms, ext_b_atoms)[
+                "graft_n_clashes"
+            ]
     else:
-        print(f"WARNING: no .trb found for {pdb_path}, skipping com_shift")
-
-    
+        print(f"WARNING: no .trb found for {pdb_path}, skipping .trb related scores.")
 
     return row
 

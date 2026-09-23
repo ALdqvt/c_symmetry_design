@@ -14,8 +14,19 @@ Stubs below (to fill in later):
 
 import numpy as np
 from scipy.spatial import cKDTree
-import warnings # Suppress warnings about mmCIF format from DSSP as we're dealing with PDB files
-warnings.filterwarnings("ignore", message="parse error at line 1", module="Bio.PDB.DSSP")
+import warnings  # Suppress warnings about mmCIF format from DSSP as we're dealing with PDB files
+
+warnings.filterwarnings(
+    "ignore", message="parse error at line 1", module="Bio.PDB.DSSP"
+)
+from Bio.PDB import Superimposer
+from Bio.PDB.Chain import Chain
+from Bio.PDB.Model import Model
+from Bio.PDB.Structure import Structure
+from Bio.PDB.Residue import Residue
+from Bio.PDB.Atom import Atom
+from copy import deepcopy
+
 
 # Typical peptide bond CA-CA distance is ~3.8 A. Flag anything notably
 # longer as a likely chain break, or an unrealistically stretched-out
@@ -27,12 +38,15 @@ BACKBONE_BREAK_THRESHOLD = 4.0  # Angstroms, CA(i) -> CA(i+1)
 # it's a valid threshold for removing chain breaks.
 
 CLASH_THRESHOLD = 2.0  # Angstroms, matches interface_checks.check_clash default
-CLASH_MIN_SEQ_SEP = 2  # ignore pairs this close in sequence on the same chain (bonded/near-bonded)
+CLASH_MIN_SEQ_SEP = (
+    2  # ignore pairs this close in sequence on the same chain (bonded/near-bonded)
+)
 
 # mkdssp isn't installable into ca_rfd (Python 3.9, no compatible conda-forge
 # build) so we call the binary from the c-symmetry-design env directly,
 # regardless of which env this script is actually running under.
 MKDSSP_PATH = "/home/panda/anaconda3/envs/c-symmetry-design/bin/mkdssp"
+
 
 def get_all_atoms(structure, exclude_hetero=True):
     atoms = []
@@ -44,7 +58,9 @@ def get_all_atoms(structure, exclude_hetero=True):
     return atoms
 
 
-def compute_clash_score(structure, threshold=CLASH_THRESHOLD, min_seq_sep=CLASH_MIN_SEQ_SEP):
+def compute_clash_score(
+    structure, threshold=CLASH_THRESHOLD, min_seq_sep=CLASH_MIN_SEQ_SEP
+):
     """
     Counts non-bonded atom pairs closer than `threshold` Angstroms, within
     and across chains. Pairs within `min_seq_sep` residues of each other on
@@ -140,7 +156,7 @@ def compute_secondary_structure(pdb_path, trb_data):
         io.save(tmp.name)
 
         model = structure[0]
-        dssp = DSSP(model, tmp.name, dssp = MKDSSP_PATH)
+        dssp = DSSP(model, tmp.name, dssp=MKDSSP_PATH)
 
         ss_by_chain = {}
         n_helix = n_sheet = n_loop = 0  # extension-only counts
@@ -174,13 +190,16 @@ def compute_secondary_structure(pdb_path, trb_data):
     if n_total == 0:
         result.update({"frac_helix": None, "frac_sheet": None, "frac_loop": None})
     else:
-        result.update({
-            "frac_helix": round(n_helix / n_total, 4),
-            "frac_sheet": round(n_sheet / n_total, 4),
-            "frac_loop": round(n_loop / n_total, 4),
-        })
+        result.update(
+            {
+                "frac_helix": round(n_helix / n_total, 4),
+                "frac_sheet": round(n_sheet / n_total, 4),
+                "frac_loop": round(n_loop / n_total, 4),
+            }
+        )
 
     return result
+
 
 def compute_radius_of_gyration(structure):
     """
@@ -201,6 +220,7 @@ def compute_radius_of_gyration(structure):
         rg = float(np.sqrt(np.mean(np.sum((coords - com) ** 2, axis=1))))
         result[f"rg_{chain.id}"] = round(rg, 3)
     return result
+
 
 def compute_com_shift(structure, trb_data):
     """
@@ -238,10 +258,137 @@ def compute_com_shift(structure, trb_data):
         motif_coords = np.array([r["CA"].get_coord() for r in motif_residues])
         full_coords = np.array([r["CA"].get_coord() for r in all_residues])
 
-        shift = float(np.linalg.norm(motif_coords.mean(axis=0) - full_coords.mean(axis=0)))
+        shift = float(
+            np.linalg.norm(motif_coords.mean(axis=0) - full_coords.mean(axis=0))
+        )
         result[f"com_shift_{cid}"] = round(shift, 3)
 
     return result
+
+
+def _motif_resnums_by_chain(trb_data):
+    motif_by_chain = {}
+    for chain_id, resnum in trb_data["con_hal_pdb_idx"]:
+        motif_by_chain.setdefault(chain_id, set()).add(resnum)
+    return motif_by_chain
+
+
+def build_grafted_monomer(structure, trb_data):
+    """
+    Builds the full A-M-B monomer: superimposes chain A onto chain B's
+    frame (via shared motif CA atoms), keeps ONE copy of the motif (B's --
+    they're coincident post-superposition), and assembles
+    [extension, motif, extension] in the correct N-to-C order, whichever
+    side each chain's own extension sits on.
+
+    Returns (grafted_structure, ext_a_atoms, ext_b_atoms) -- the two
+    extension atom lists are returned separately (post-transform for A,
+    as-is for B) so the caller can run a scoped clash check between just
+    the two extensions -- the only relationship that's genuinely new
+    after grafting. Everything else (each extension vs. the/its own
+    motif) reduces to a relationship already validated pre-graft, since
+    a rigid-body superposition preserves A's extension's geometry
+    relative to the motif.
+    """
+    motif_by_chain = _motif_resnums_by_chain(trb_data)
+
+    # structure = deepcopy(structure)
+    # Do not do this as deepcopy in a BioPython structure is heavily linked.
+    chain_a = structure[0]["A"]
+    chain_b = structure[0]["B"]
+
+    motif_a_res = [
+        r
+        for r in chain_a
+        if r.id[0] == " " and r.id[1] in motif_by_chain.get("A", set())
+    ]
+    motif_b_res = [
+        r
+        for r in chain_b
+        if r.id[0] == " " and r.id[1] in motif_by_chain.get("B", set())
+    ]
+    ext_a_res = [
+        r
+        for r in chain_a
+        if r.id[0] == " " and r.id[1] not in motif_by_chain.get("A", set())
+    ]
+    ext_b_res = [
+        r
+        for r in chain_b
+        if r.id[0] == " " and r.id[1] not in motif_by_chain.get("B", set())
+    ]
+
+    common_len = min(len(motif_a_res), len(motif_b_res))
+    atoms_a = [r["CA"] for r in motif_a_res[:common_len]]
+    atoms_b = [r["CA"] for r in motif_b_res[:common_len]]
+
+    sup = Superimposer()
+    sup.set_atoms(atoms_b, atoms_a)  # map A's frame onto B's
+    ext_a_atoms = [atom for res in ext_a_res for atom in res]
+    sup.apply(
+        ext_a_atoms
+    )  # only A's extension needs transforming -- we keep B's copy of the motif
+
+    ext_is_n_terminal = bool(ext_a_res) and (
+        ext_a_res[0].id[1] < min(r.id[1] for r in motif_a_res)
+    )
+
+    if ext_is_n_terminal:
+        # A's own extension is N-terminal -> B's extension is C-terminal
+        residue_order = ext_a_res + motif_b_res + ext_b_res
+    else:
+        # A's own extension is C-terminal -> B's extension is N-terminal
+        residue_order = ext_b_res + motif_b_res + ext_a_res
+
+    new_chain = Chain("A")
+    next_resnum = 1
+    for res in residue_order:
+        if res.id[0] != " ":
+            continue
+        new_res = Residue((" ", next_resnum, " "), res.resname, res.segid)
+        for atom in res:
+            new_atom = Atom(
+                atom.get_name(),
+                atom.get_coord().copy(),
+                atom.get_bfactor(),
+                atom.get_occupancy(),
+                atom.get_altloc(),
+                atom.get_fullname(),
+                atom.get_serial_number(),
+                element=atom.element,
+            )
+            new_res.add(new_atom)
+        new_chain.add(new_res)
+        next_resnum += 1
+
+    model = Model(0)
+    model.add(new_chain)
+    grafted = Structure("grafted_monomer")
+    grafted.add(model)
+
+    ext_b_atoms = [atom for res in ext_b_res for atom in res]
+    return grafted, ext_a_atoms, ext_b_atoms
+
+
+def compute_graft_clash(ext_a_atoms, ext_b_atoms, threshold=CLASH_THRESHOLD):
+    """
+    Checks only the two extensions against each other -- the one
+    relationship that's genuinely new post-graft (see build_grafted_monomer
+    docstring for why everything else doesn't need rechecking).
+    """
+    if not ext_a_atoms or not ext_b_atoms:
+        return {"graft_n_clashes": 0, "graft_min_clash_dist": None}
+
+    coords_a = np.array([a.get_coord() for a in ext_a_atoms])
+    coords_b = np.array([a.get_coord() for a in ext_b_atoms])
+
+    tree = cKDTree(coords_b)
+    dists, _ = tree.query(coords_a, k=1)
+
+    n_clashes = int(np.sum(dists < threshold))
+    min_dist = float(np.min(dists)) if n_clashes > 0 else None
+    return {"graft_n_clashes": n_clashes, "graft_min_clash_dist": min_dist}
+
 
 # --- Stubs for future metrics ---
 def compute_intertwining(structure):
