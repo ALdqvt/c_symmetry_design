@@ -98,8 +98,22 @@ The resulting code is run like this:
 python -m mpnn.write_mpnn_inputs --pdb-dir rfd2/out --passing-csv-path rfd2_filtering/passing.csv
 ```
 
+To sum things up, we have now generated predictions of the sequence for the dimer assembly. One thing we'll have to do is to also produce the sequence of a monomer, by combining the two chains' sequences into one. 
+
+
+### Combine the chains
+As mentioned earlier, when we ran MPNN with the `run_mpnn.sh` script we made a (hetero) dimer consisting of the monomer M part and each side's arm. These now should be combined.
+> [!info] Should we do this before filtering or after?
+> \- I think we need to things in parallel from now on:
+> The reason is that we actually might want to predict/fold the structure of one interface,
+> which means it is nice to have a sequence for two chains that are "capped" at the end,
+> meaning that the outer stumps of our dimer have already been proven to fold into a "nice" structure,
+> so we don't have to make "new" stumps from scratch.
+> However, in my head we still need to be able to predict the full monomer in a configuration of 6 monomers forming a C6,
+> and it'd thus also be nice to prove that one standalone monomer will also fold. 
 
 ### MPNN filtering
+> [!question] Why not a standalone submodule?
 > Q: There's rfd2_filtering, why is filtering of MPNN not it's own submodule?
 > A: It's not so complex.
 
